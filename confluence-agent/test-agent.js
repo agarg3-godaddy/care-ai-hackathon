@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Simple test script to verify the Confluence agent works
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 const BASE_URL = 'http://localhost:3000';
 

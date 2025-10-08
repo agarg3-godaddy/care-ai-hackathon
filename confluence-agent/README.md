@@ -5,11 +5,13 @@ An AI-powered agent that helps you search and find information in Confluence doc
 ## Features
 
 - 🔍 Search Confluence pages by keyword
+- 📄 Fetch full content of specific Confluence pages
 - 🤖 AI-powered responses with context-aware search suggestions
 - 🔗 Direct links to relevant Confluence pages
 - 📊 Structured search results with metadata
 - 🛡️ Secure authentication and authorization
 - 🚀 Production-ready HTTP server
+- 🔄 Two-step workflow: search → fetch detailed content
 
 ## Prerequisites
 
@@ -94,6 +96,43 @@ curl -X POST http://localhost:3000/agent/send \
 curl -X GET "http://localhost:3000/agent/stream?input=How%20do%20I%20deploy%20to%20production?"
 ```
 
+### Available Tools
+
+The agent has two powerful tools for Confluence interaction:
+
+1. **`search_confluence`** - Search for pages by keyword
+   - Returns a list of matching pages with titles, URLs, and excerpts
+   - Supports complex search queries and filters
+
+2. **`get_confluence_page`** - Fetch full content of a specific page
+   - Takes a Confluence page URL from search results
+   - Returns the complete page content including HTML, metadata, and labels
+
+### Two-Step Workflow
+
+The agent supports a powerful two-step workflow:
+
+1. **Search**: Find relevant pages
+2. **Fetch**: Get full content of specific pages
+
+```bash
+# Step 1: Search for pages
+curl -X POST http://localhost:3000/agent/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "Search for deployment processes",
+    "conversationId": "my-conversation-123"
+  }'
+
+# Step 2: Get full content of a specific page
+curl -X POST http://localhost:3000/agent/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "Get the full content of the first page from the search results",
+    "conversationId": "my-conversation-123"
+  }'
+```
+
 #### Get Conversation History
 
 ```bash
@@ -117,6 +156,51 @@ This agent integrates the Confluence MCP tool using the care-agent-sdk framework
 - **HTTP Server**: Production-ready server with authentication, logging, and CORS support
 - **Session Management**: Built-in conversation persistence and session handling
 - **Security**: Initiator-only authorization and secure authentication patterns
+
+## Testing
+
+### Automated Testing
+
+Run the comprehensive test suite:
+
+```bash
+# Basic functionality test
+node test-agent.js
+
+# Comprehensive test with both tools
+node test-agent-comprehensive.js
+```
+
+### Interactive Testing
+
+For manual testing and exploration:
+
+```bash
+node test-interactive.js
+```
+
+This will start an interactive session where you can:
+- Test different search queries
+- Try the two-step workflow (search → fetch)
+- Experiment with various Confluence URLs
+- Test error handling scenarios
+
+### Test Scenarios
+
+**Search Functionality:**
+- "Search for deployment documentation"
+- "Find information about coding standards"
+- "Look for database migration guides"
+
+**Content Fetching:**
+- "Get the full content of [URL from search results]"
+- "Show me the complete documentation for the deployment page"
+- "Fetch the detailed content of the first search result"
+
+**Error Handling:**
+- Search for non-existent content
+- Provide invalid Confluence URLs
+- Test with malformed requests
 
 ## Development
 

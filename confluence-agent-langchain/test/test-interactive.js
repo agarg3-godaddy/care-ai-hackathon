@@ -62,7 +62,33 @@ async function getAvailableTools() {
 // Helper function to test tools directly
 async function testToolDirectly(toolName, params) {
   try {
-    const response = await fetch(`${BASE_URL}/confluence/${toolName}`, {
+    let endpoint = '';
+    
+    // Map tool names to endpoints
+    switch (toolName) {
+      case 'search':
+        endpoint = '/confluence/search';
+        break;
+      case 'page':
+        endpoint = '/confluence/page';
+        break;
+      case 'solutions':
+        endpoint = '/confluence/solutions';
+        break;
+      case 'jira-search':
+        endpoint = '/jira/search';
+        break;
+      case 'issue':
+        endpoint = '/jira/issue';
+        break;
+      case 'search-nl':
+        endpoint = '/jira/search-nl';
+        break;
+      default:
+        endpoint = `/confluence/${toolName}`;
+    }
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -89,17 +115,22 @@ function displayHelp() {
   console.log('• Type your question normally to test the agent');
   console.log('• "help" - Show this help message');
   console.log('• "tools" - Show available tools');
-  console.log('• "test-search <query>" - Test search tool directly');
-  console.log('• "test-page <url>" - Test page tool directly');
   console.log('• "health" - Check server health');
   console.log('• "clear" - Clear chat history');
   console.log('• "quit" or "exit" - Exit the interactive test');
+  console.log('\n🔧 Direct Tool Testing:');
+  console.log('• "test-search <query>" - Test Confluence search');
+  console.log('• "test-page <url>" - Test Confluence page fetch');
+  console.log('• "test-solutions <issue>" - Test Confluence solutions');
+  console.log('• "test-jira <query>" - Test Jira search');
+  console.log('• "test-jira-nl <prompt>" - Test Jira natural language');
+  console.log('• "test-issue <key>" - Test Jira issue fetch');
   console.log('\n💡 Example Queries:');
-  console.log('• "Give me the link of the confluence page that has CI Opt-Out Lambda Implementation Details"');
-  console.log('• "Search for deployment documentation"');
-  console.log('• "Find information about coding standards"');
-  console.log('• "What are the database migration guides?"');
-  console.log('• "Get the full content of [URL]"');
+  console.log('• "Is CI opt out lambda task completed?"');
+  console.log('• "Find troubleshooting guides for deployment issues"');
+  console.log('• "Show me Jira issues assigned to me this week"');
+  console.log('• "Search for CI/CD documentation"');
+  console.log('• "What are the current bugs in the ENG project?"');
   console.log('');
 }
 
@@ -218,6 +249,62 @@ async function interactiveTest() {
         console.log(result);
       } else {
         console.log('❌ Page fetch failed');
+      }
+      console.log('');
+      continue;
+    }
+
+    if (input.toLowerCase().startsWith('test-solutions ')) {
+      const issue = input.substring(15);
+      console.log(`\n🔧 Testing solutions tool directly with: "${issue}"`);
+      const result = await testToolDirectly('solutions', { issue, limit: 3 });
+      if (result) {
+        console.log('✅ Solutions Result:');
+        console.log(result);
+      } else {
+        console.log('❌ Solutions search failed');
+      }
+      console.log('');
+      continue;
+    }
+
+    if (input.toLowerCase().startsWith('test-jira ')) {
+      const query = input.substring(10);
+      console.log(`\n🎫 Testing Jira search tool directly with: "${query}"`);
+      const result = await testToolDirectly('jira-search', { query, maxResults: 5 });
+      if (result) {
+        console.log('✅ Jira Search Result:');
+        console.log(result);
+      } else {
+        console.log('❌ Jira search failed');
+      }
+      console.log('');
+      continue;
+    }
+
+    if (input.toLowerCase().startsWith('test-jira-nl ')) {
+      const prompt = input.substring(13);
+      console.log(`\n🗣️ Testing Jira natural language tool directly with: "${prompt}"`);
+      const result = await testToolDirectly('search-nl', { prompt, maxResults: 5 });
+      if (result) {
+        console.log('✅ Jira NL Result:');
+        console.log(result);
+      } else {
+        console.log('❌ Jira natural language search failed');
+      }
+      console.log('');
+      continue;
+    }
+
+    if (input.toLowerCase().startsWith('test-issue ')) {
+      const key = input.substring(11);
+      console.log(`\n🎫 Testing Jira issue tool directly with: "${key}"`);
+      const result = await testToolDirectly('issue', { key });
+      if (result) {
+        console.log('✅ Jira Issue Result:');
+        console.log(result);
+      } else {
+        console.log('❌ Jira issue fetch failed');
       }
       console.log('');
       continue;

@@ -1,7 +1,14 @@
 import { ChatGroq } from '@langchain/groq';
 import { AgentExecutor, createOpenAIFunctionsAgent } from 'langchain/agents';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { ConfluenceSearchTool, ConfluencePageTool } from './tools.js';
+import { 
+  ConfluenceSearchTool, 
+  ConfluencePageTool, 
+  ConfluenceSolutionsTool,
+  JiraSearchTool,
+  JiraIssueTool,
+  JiraNaturalLanguageTool
+} from './tools.js';
 
 export class ConfluenceAgent {
   constructor(groqApiKey, confluenceBaseUrl, confluenceEmail, confluenceApiToken) {
@@ -22,32 +29,45 @@ export class ConfluenceAgent {
     this.tools = [
       new ConfluenceSearchTool(confluenceBaseUrl, confluenceEmail, confluenceApiToken),
       new ConfluencePageTool(confluenceBaseUrl, confluenceEmail, confluenceApiToken),
+      new ConfluenceSolutionsTool(confluenceBaseUrl, confluenceEmail, confluenceApiToken),
+      new JiraSearchTool(confluenceBaseUrl, confluenceEmail, confluenceApiToken),
+      new JiraIssueTool(confluenceBaseUrl, confluenceEmail, confluenceApiToken),
+      new JiraNaturalLanguageTool(confluenceBaseUrl, confluenceEmail, confluenceApiToken),
     ];
 
     // Create the prompt template
     this.prompt = PromptTemplate.fromTemplate(`
-You are a helpful AI assistant specialized in searching and finding information in Confluence documentation.
+You are a helpful AI assistant specialized in searching and finding information in Confluence documentation and Jira issues.
 
 You have access to the following tools:
+
+**Confluence Tools:**
 - search_confluence: Search for Confluence pages by keyword
 - get_confluence_page: Fetch the full content of a specific Confluence page
+- search_confluence_solutions: Find troubleshooting/how-to Confluence pages for specific issues
+
+**Jira Tools:**
+- search_jira: Search Jira issues by JQL or free text query
+- get_jira_issue: Fetch a specific Jira issue by key (e.g., ENG-123)
+- search_jira_nl: Search Jira with natural language prompts (e.g., "show issues assigned to me last week")
 
 When users ask questions or need information, you should:
 
-1. Use the search_confluence tool to find relevant documentation
-2. Analyze the search results and provide helpful summaries
-3. If users want to see the full content of a specific page, use get_confluence_page with the URL from search results
-4. Direct users to specific Confluence pages when relevant
-5. Help users refine their search queries if initial results aren't helpful
+1. **For Confluence queries**: Use search_confluence to find relevant documentation
+2. **For troubleshooting**: Use search_confluence_solutions to find how-to guides and solutions
+3. **For Jira queries**: Use search_jira or search_jira_nl to find relevant issues
+4. **For specific content**: Use get_confluence_page or get_jira_issue to fetch full details
+5. Analyze results and provide helpful summaries with direct links
+6. Help users refine their search queries if initial results aren't helpful
 
 Guidelines:
-- Always use the search_confluence tool when users ask about documentation, processes, or information that might be in Confluence
-- When users want to read the full content of a page, use get_confluence_page with the URL from search results
-- Provide clear, concise summaries of search results and page content
-- Include direct links to relevant Confluence pages
+- Use appropriate tools based on the user's question (Confluence vs Jira)
+- For troubleshooting questions, prefer search_confluence_solutions
+- For Jira queries, use natural language search when possible
+- Provide clear, concise summaries with direct links
 - If no results are found, suggest alternative search terms or approaches
 - Be helpful and professional in your responses
-- If users ask about topics unrelated to Confluence, politely redirect them to use the search functionality
+- Combine information from multiple sources when relevant
 
 Previous conversation:
 {chat_history}

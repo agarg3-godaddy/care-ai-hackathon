@@ -125,3 +125,350 @@ export class ConfluencePageTool extends DynamicStructuredTool {
     });
   }
 }
+
+export class ConfluenceSolutionsTool extends DynamicStructuredTool {
+  constructor(baseUrl, email, apiToken) {
+    super({
+      name: 'search_confluence_solutions',
+      description: 'Find troubleshooting/how-to Confluence pages relevant to a described issue',
+      schema: z.object({
+        issue: z.string().describe('Describe your problem or error to find solutions'),
+        spaces: z.array(z.string()).optional().describe('Optional space keys to restrict the search (e.g., ENG, DOCS)'),
+        labels: z.array(z.string()).optional().describe('Optional extra labels to prioritize (e.g., troubleshooting)'),
+        limit: z.number().int().min(1).max(20).optional().describe('Max results to return (default 5)'),
+      }),
+      func: async ({ issue, spaces, labels, limit }) => {
+        try {
+          const authHeader = "Basic " + Buffer.from(`${email}:${apiToken}`).toString("base64");
+          
+          const defaultLabels = [
+            "troubleshooting",
+            "how-to",
+            "kb-how-to-article",
+            "resolution",
+            "fix",
+            "setup",
+            "install",
+            "configure",
+          ];
+          const prioritizedLabels = Array.from(new Set([...(labels || []), ...defaultLabels]));
+
+          const titleKeywords = [
+            "troubleshoot",
+            "solution",
+            "resolve",
+            "error",
+            "fix",
+            "how to",
+            "how-to",
+            "setup",
+            "install",
+            "configure",
+            "guide",
+          ];
+
+          const labelCql = prioritizedLabels
+            .map((l) => `label = \"${l.replace(/\"/g, '\\\"')}\"`)
+            .join(" OR ");
+          const titleCql = titleKeywords
+            .map((k) => `title ~ \"${k.replace(/\"/g, '\\\"')}\"`)
+            .join(" OR ");
+
+          let spaceCql = "";
+          if (spaces && spaces.length > 0) {
+            const spaceExpr = spaces
+              .map((s) => `space = \"${s.replace(/\"/g, '\\\"')}\"`)
+              .join(" OR ");
+            spaceCql = `(${spaceExpr})`;
+          }
+
+          const issueEscaped = issue.replace(/\"/g, '\\\"');
+          const cqlParts = [
+            "type = page",
+            `(text ~ \"${issueEscaped}\")`,
+            `(${titleCql})`,
+            `(${labelCql})`,
+          ];
+          if (spaceCql) cqlParts.push(spaceCql);
+
+          const cql = `${cqlParts.join(" AND ")} order by lastmodified desc`;
+          const max = typeof limit === "number" ? limit : 5;
+          const url = `${baseUrl}/wiki/rest/api/search?cql=${encodeURIComponent(cql)}&limit=${max}`;
+
+          const response = await fetch(url, {
+            headers: {
+              Authorization: authHeader,
+              Accept: "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            return `Failed to search solutions: ${response.status} ${response.statusText}\n${errText.slice(0, 500)}`;
+          }
+
+          const data = await response.json();
+          const results = Array.isArray(data.results) ? data.results : [];
+          if (results.length === 0) {
+            return `No solution-like pages found for: ${issue}`;
+          }
+
+          const items = results.slice(0, max).map((r) => {
+            const title = r.content?.title || r.title || "Untitled";
+            const webui = r.content?._links?.webui || r.url || "";
+            const pageUrl = webui.startsWith("http") ? webui : `${baseUrl}/wiki${webui}`;
+            const rawExcerpt = r.excerpt || r.content?.excerpt || "";
+            const textExcerpt = rawExcerpt
+              .replace(/<[^>]+>/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 400);
+            return `• ${title}\n  ${pageUrl}\n  ${textExcerpt}`;
+          });
+
+          return `Top solution-focused results for:\n"${issue}"\n\n${items.join("\n\n")}`;
+        } catch (error) {
+          return `Error searching for solutions in Confluence: ${error.message}`;
+        }
+      },
+    });
+  }
+}
+
+export class JiraSearchTool extends DynamicStructuredTool {
+  constructor(baseUrl, email, apiToken) {
+    super({
+      name: 'search_jira',
+      description: 'Search Jira issues by JQL or free text query',
+      schema: z.object({
+        jql: z.string().optional().describe('JQL to execute (overrides query if provided)'),
+        query: z.string().optional().describe('Free text to search in Jira issues'),
+        maxResults: z.number().int().min(1).max(50).optional().describe('Max results to return (default 10)'),
+        fields: z.array(z.string()).optional().describe('Optional fields to return (e.g., [\'summary\',\'status\',\'assignee\'])'),
+      }),
+      func: async ({ jql, query, maxResults, fields }) => {
+        try {
+          const authHeader = "Basic " + Buffer.from(`${email}:${apiToken}`).toString("base64");
+          
+          const effectiveMax = typeof maxResults === "number" ? maxResults : 10;
+          let effectiveJql = jql || "";
+
+          if (!effectiveJql) {
+            const q = (query || "").trim();
+            if (!q) {
+              return "Provide either 'jql' or a non-empty 'query' string.";
+            }
+            // Free text search using text ~ "..." across projects
+            const escaped = q.replace(/\"/g, '\\"');
+            effectiveJql = `text ~ \"${escaped}\" order by updated desc`;
+          }
+
+          const apiUrl = `${baseUrl}/rest/api/3/search/jql`;
+          const body = {
+            jql: effectiveJql,
+            maxResults: effectiveMax,
+            fields: fields && fields.length ? fields : ["summary", "status", "assignee", "issuetype", "priority", "updated"],
+          };
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              Authorization: authHeader,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            return `Failed to search Jira: ${response.status} ${response.statusText}\n${errText.slice(0, 500)}`;
+          }
+
+          const data = await response.json();
+          const issues = Array.isArray(data.issues) ? data.issues : [];
+          if (issues.length === 0) {
+            return "No Jira issues found.";
+          }
+
+          const lines = issues.map((i) => {
+            const key = i.key;
+            const summary = i.fields?.summary || "";
+            const status = i.fields?.status?.name || "";
+            const assignee = i.fields?.assignee?.displayName || "Unassigned";
+            const type = i.fields?.issuetype?.name || "";
+            const url = `${baseUrl}/browse/${key}`;
+            return `• ${key} [${type}] — ${status} — ${assignee}\n  ${summary}\n  ${url}`;
+          });
+
+          return lines.join("\n\n");
+        } catch (error) {
+          return `Error searching Jira: ${error.message}`;
+        }
+      },
+    });
+  }
+}
+
+export class JiraIssueTool extends DynamicStructuredTool {
+  constructor(baseUrl, email, apiToken) {
+    super({
+      name: 'get_jira_issue',
+      description: 'Fetch a Jira issue by key (e.g., ENG-123)',
+      schema: z.object({
+        key: z.string().describe('Jira issue key, e.g., ENG-123'),
+      }),
+      func: async ({ key }) => {
+        try {
+          const authHeader = "Basic " + Buffer.from(`${email}:${apiToken}`).toString("base64");
+          
+          const apiUrl = `${baseUrl}/rest/api/3/issue/${encodeURIComponent(key)}?expand=renderedFields,changelog`;
+          const response = await fetch(apiUrl, {
+            headers: {
+              Authorization: authHeader,
+              Accept: "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            return `Failed to fetch issue ${key}: ${response.status} ${response.statusText}\n${errText.slice(0, 500)}`;
+          }
+
+          const data = await response.json();
+          const summary = data.fields?.summary || "";
+          const descriptionHtml = data.renderedFields?.description || "";
+          const status = data.fields?.status?.name || "";
+          const assignee = data.fields?.assignee?.displayName || "Unassigned";
+          const reporter = data.fields?.reporter?.displayName || "";
+          const type = data.fields?.issuetype?.name || "";
+          const url = `${baseUrl}/browse/${data.key}`;
+
+          return `${data.key} [${type}] — ${status}\n` +
+            `Assignee: ${assignee} | Reporter: ${reporter}\n` +
+            `Summary: ${summary}\n` +
+            `URL: ${url}\n` +
+            descriptionHtml;
+        } catch (error) {
+          return `Error fetching Jira issue: ${error.message}`;
+        }
+      },
+    });
+  }
+}
+
+export class JiraNaturalLanguageTool extends DynamicStructuredTool {
+  constructor(baseUrl, email, apiToken) {
+    super({
+      name: 'search_jira_nl',
+      description: 'Search Jira with a natural language prompt (e.g., \'show issues assigned to me last week in ENG\')',
+      schema: z.object({
+        prompt: z.string().describe('Natural language description of what to find'),
+        maxResults: z.number().int().min(1).max(50).optional().describe('Max results to return (default 10)'),
+        fields: z.array(z.string()).optional().describe('Optional fields to return'),
+      }),
+      func: async ({ prompt, maxResults, fields }) => {
+        try {
+          const authHeader = "Basic " + Buffer.from(`${email}:${apiToken}`).toString("base64");
+          
+          const lower = prompt.toLowerCase();
+          const conditions = [];
+
+          if (/\bassigned to me\b/.test(lower)) conditions.push("assignee = currentUser()");
+          if (/\breported by me\b/.test(lower)) conditions.push("reporter = currentUser()");
+          if (/\bunassigned\b/.test(lower)) conditions.push("assignee is EMPTY");
+
+          if (/\b(open|unresolved|not done|to ?do)\b/.test(lower)) conditions.push("resolution = Unresolved");
+          if (/\b(done|closed|resolved)\b/.test(lower)) conditions.push("statusCategory = Done");
+          if (/\bin progress\b/.test(lower)) conditions.push('statusCategory = "In Progress"');
+
+          const projectMatch = prompt.match(/\b(?:in\s+)?project\s*[:=]?\s*([A-Z][A-Z0-9_]+)/i);
+          if (projectMatch) conditions.push(`project = ${projectMatch[1].toUpperCase()}`);
+
+          if (/\bbug\b/i.test(prompt)) conditions.push('issuetype = "Bug"');
+          if (/\bstory\b/i.test(prompt)) conditions.push('issuetype = "Story"');
+          if (/\btask\b/i.test(prompt)) conditions.push('issuetype = "Task"');
+
+          if (/\bcritical\b/i.test(prompt)) conditions.push('priority = "Critical"');
+          if (/\bblocker\b/i.test(prompt)) conditions.push('priority = "Blocker"');
+          if (/\bhighest\b|\bp1\b/i.test(prompt)) conditions.push('priority = "Highest"');
+          if (/\bhigh\b|\bp2\b/i.test(prompt)) conditions.push('priority = "High"');
+
+          if (/\btoday\b/.test(lower)) conditions.push("updated >= startOfDay()");
+          if (/\byesterday\b/.test(lower)) conditions.push("updated >= startOfDay(-1d) AND updated < startOfDay()");
+          if (/\b(last|past)\s+week\b/.test(lower)) conditions.push("updated >= -1w");
+          const lastNDays = prompt.match(/\blast\s+(\d{1,2})\s+days?/i);
+          if (lastNDays) conditions.push(`updated >= -${lastNDays[1]}d`);
+          if (/\bthis month\b/.test(lower)) conditions.push("updated >= startOfMonth()");
+
+          const labelBlock = prompt.match(/\blabels?\s*[:=]\s*([\w, -]+)/i);
+          if (labelBlock) {
+            const labels = labelBlock[1]
+              .split(/[,\s]+/)
+              .map((s) => s.trim())
+              .filter(Boolean);
+            if (labels.length) {
+              const orExpr = labels.map((l) => `labels = \"${l.replace(/\"/g, '\\\"')}\"`).join(" OR ");
+              conditions.push(`(${orExpr})`);
+            }
+          }
+
+          const quotedPhrases = Array.from(prompt.matchAll(/"([^"]+)"/g)).map((m) => m[1]);
+          const textTerms = quotedPhrases.length ? quotedPhrases : [];
+          if (!textTerms.length && conditions.length === 0) {
+            const escaped = prompt.replace(/\"/g, '\\"');
+            textTerms.push(escaped);
+          }
+          const textExpr = textTerms.length
+            ? textTerms.map((t) => `text ~ \"${t.replace(/\"/g, '\\\"')}\"`).join(" AND ")
+            : "";
+          if (textExpr) conditions.push(textExpr);
+
+          const jql = `${conditions.join(" AND ")} order by updated desc`.trim();
+
+          const apiUrl = `${baseUrl}/rest/api/3/search/jql`;
+          const body = {
+            jql,
+            maxResults: typeof maxResults === "number" ? maxResults : 10,
+            fields: fields && fields.length ? fields : ["summary", "status", "assignee", "issuetype", "priority", "updated"],
+          };
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              Authorization: authHeader,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            return `Failed to search Jira (NL): ${response.status} ${response.statusText}\n${errText.slice(0, 500)}`;
+          }
+
+          const data = await response.json();
+          const issues = Array.isArray(data.issues) ? data.issues : [];
+          if (issues.length === 0) {
+            return "No Jira issues found.";
+          }
+
+          const lines = issues.map((i) => {
+            const key = i.key;
+            const summary = i.fields?.summary || "";
+            const status = i.fields?.status?.name || "";
+            const assignee = i.fields?.assignee?.displayName || "Unassigned";
+            const type = i.fields?.issuetype?.name || "";
+            const url = `${baseUrl}/browse/${key}`;
+            return `• ${key} [${type}] — ${status} — ${assignee}\n  ${summary}\n  ${url}`;
+          });
+
+          return lines.join("\n\n");
+        } catch (error) {
+          return `Error searching Jira (NL): ${error.message}`;
+        }
+      },
+    });
+  }
+}

@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+      "confluence": {
+        "command": "node",
+        "args": ["mcp-confluence.js"],
+        "env": {
+          "CONFLUENCE_BASE_URL": "https://godaddy-corp.atlassian.net",
+          "ATLASSIAN_EMAIL": "<email>",
+          "ATLASSIAN_API_TOKEN": "<token>"
+        }
+      }
+    }
+  }

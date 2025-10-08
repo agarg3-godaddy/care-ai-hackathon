@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { createServer } from '@careai/http-server';
 import { httpAgent } from '@careai/agent-server';
+import { Request, Response } from 'express';
 import agent from './index.js';
 
 // Validate environment variables
@@ -15,9 +16,14 @@ if (missingVars.length > 0) {
 
 // Create HTTP server using care-agent-sdk
 const server = createServer({
+  port: 3000, // Use port 3000 for development
+  ssl: false, // Disable SSL for development
   cors: {
     origin: true, // Allow all origins for development
     credentials: true,
+  },
+  authn: {
+    enabled: false, // Disable authentication for development
   },
 });
 
@@ -30,7 +36,7 @@ const agentRoutes = httpAgent()
 server.app.use('/agent', agentRoutes);
 
 // Health check endpoint
-server.app.get('/health', (req: any, res: any) => {
+server.app.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     service: 'confluence-agent',
@@ -39,11 +45,14 @@ server.app.get('/health', (req: any, res: any) => {
   });
 });
 
-// Start the server
+// Start the server using care-agent-sdk's start method
 const PORT = process.env.PORT || 3000;
-server.app.listen(PORT, () => {
+server.start().then(() => {
   console.log(`🚀 Confluence Agent server running on http://localhost:${PORT}`);
   console.log(`📚 Agent endpoint: http://localhost:${PORT}/agent`);
   console.log(`❤️  Health check: http://localhost:${PORT}/health`);
   console.log(`🔍 Confluence Base URL: ${process.env.CONFLUENCE_BASE_URL}`);
+}).catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });

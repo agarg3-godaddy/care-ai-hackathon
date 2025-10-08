@@ -63,13 +63,14 @@ async function interactiveTest() {
   
   // Check if server is running
   try {
-    const healthResponse = await fetch(`${BASE_URL}/health`);
+    const healthResponse = await fetch(`http://localhost:3000/health`);
     if (!healthResponse.ok) {
       throw new Error('Server not responding');
     }
     const healthData = await healthResponse.json();
     console.log(`✅ Connected to ${healthData.service} v${healthData.version}\n`);
   } catch (error) {
+    console.log(error)
     console.error('❌ Cannot connect to agent server. Make sure it\'s running with: npm start');
     process.exit(1);
   }

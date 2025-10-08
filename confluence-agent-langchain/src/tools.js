@@ -6,7 +6,7 @@ export class ConfluenceSearchTool extends DynamicStructuredTool {
   constructor(baseUrl, email, apiToken) {
     super({
       name: 'search_confluence',
-      description: 'Search Confluence pages by keyword to find relevant documentation and information',
+      description: 'Search Confluence pages by keyword to find relevant documentation and information. Use this for implementation details, specifications, and documentation searches.',
       schema: z.object({
         query: z.string().describe('Search term for Confluence content'),
       }),
@@ -239,7 +239,7 @@ export class JiraSearchTool extends DynamicStructuredTool {
   constructor(baseUrl, email, apiToken) {
     super({
       name: 'search_jira',
-      description: 'Search Jira issues by JQL or free text query',
+      description: 'Search Jira issues by JQL or free text query. Use this to find issues related to specific topics, features, or problems. Best for finding issues by content, not status queries.',
       schema: z.object({
         jql: z.string().optional().describe('JQL to execute (overrides query if provided)'),
         query: z.string().optional().describe('Free text to search in Jira issues'),
@@ -361,7 +361,7 @@ export class JiraNaturalLanguageTool extends DynamicStructuredTool {
   constructor(baseUrl, email, apiToken) {
     super({
       name: 'search_jira_nl',
-      description: 'Search Jira with a natural language prompt (e.g., \'show issues assigned to me last week in ENG\')',
+      description: 'Search Jira with natural language prompts. BEST for task completion status queries, assignment queries, and project-specific searches. Use this for questions like "is X task completed?" or "show issues assigned to me".',
       schema: z.object({
         prompt: z.string().describe('Natural language description of what to find'),
         maxResults: z.number().int().min(1).max(50).optional().describe('Max results to return (default 10)'),
@@ -374,13 +374,21 @@ export class JiraNaturalLanguageTool extends DynamicStructuredTool {
           const lower = prompt.toLowerCase();
           const conditions = [];
 
+          // Enhanced completion status detection
           if (/\bassigned to me\b/.test(lower)) conditions.push("assignee = currentUser()");
           if (/\breported by me\b/.test(lower)) conditions.push("reporter = currentUser()");
           if (/\bunassigned\b/.test(lower)) conditions.push("assignee is EMPTY");
 
-          if (/\b(open|unresolved|not done|to ?do)\b/.test(lower)) conditions.push("resolution = Unresolved");
-          if (/\b(done|closed|resolved)\b/.test(lower)) conditions.push("statusCategory = Done");
+          // Enhanced status detection for completion queries
+          if (/\b(open|unresolved|not done|to ?do|incomplete|pending)\b/.test(lower)) conditions.push("resolution = Unresolved");
+          if (/\b(done|closed|resolved|completed|finished)\b/.test(lower)) conditions.push("statusCategory = Done");
           if (/\bin progress\b/.test(lower)) conditions.push('statusCategory = "In Progress"');
+          
+          // Special handling for completion status queries
+          if (/\b(completion|completed|completion status|work.*completed|task.*completed)\b/.test(lower)) {
+            // Don't add status filters for completion queries - we want to see all statuses
+            // This allows us to see both completed and in-progress work
+          }
 
           const projectMatch = prompt.match(/\b(?:in\s+)?project\s*[:=]?\s*([A-Z][A-Z0-9_]+)/i);
           if (projectMatch) conditions.push(`project = ${projectMatch[1].toUpperCase()}`);

@@ -2,7 +2,7 @@
 
 import fetch from 'node-fetch';
 
-const BASE_URL = 'http://localhost:3002';
+const BASE_URL = 'http://localhost:3009';
 
 // Test function
 async function testAgent() {
@@ -17,7 +17,7 @@ async function testAgent() {
     console.log('✅ Health check passed:', healthData.status);
     console.log('   Agent ready:', healthData.agentReady);
     console.log('   Confluence configured:', healthData.confluence.configured);
-    console.log('   OpenAI configured:', healthData.openai.configured);
+    console.log('   Groq configured:', healthData.groq.configured);
   } catch (error) {
     console.log('❌ Health check failed:', error.message);
     return;

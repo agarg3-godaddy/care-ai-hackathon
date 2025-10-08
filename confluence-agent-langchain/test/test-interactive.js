@@ -116,7 +116,7 @@ async function displayHealth() {
     console.log(`Version: ${data.version}`);
     console.log(`Agent Ready: ${data.agentReady ? '✅ Yes' : '❌ No'}`);
     console.log(`Confluence: ${data.confluence.configured ? '✅ Configured' : '❌ Not configured'}`);
-    console.log(`OpenAI: ${data.openai.configured ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`Groq: ${data.groq.configured ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`Timestamp: ${data.timestamp}`);
   } catch (error) {
     console.log('❌ Failed to get health status:', error.message);
@@ -154,7 +154,7 @@ async function interactiveTest() {
     console.log(`✅ Connected to ${healthData.service} v${healthData.version}`);
     console.log(`   Agent Ready: ${healthData.agentReady ? '✅' : '❌'}`);
     console.log(`   Confluence: ${healthData.confluence.baseUrl}`);
-    console.log(`   OpenAI: ${healthData.openai.configured ? 'Configured' : 'Not configured'}\n`);
+    console.log(`   Groq: ${healthData.groq.configured ? 'Configured' : 'Not configured'}\n`);
     
     if (!healthData.agentReady) {
       console.log('⚠️  Warning: Agent is not ready yet. Some features may not work.\n');
@@ -259,7 +259,7 @@ async function interactiveTest() {
         console.log('─'.repeat(60));
         
         if (response.error && response.error.includes('quota')) {
-          console.log('\n💡 Tip: OpenAI quota exceeded. The tools work fine, but AI reasoning is unavailable.');
+          console.log('\n💡 Tip: Groq quota exceeded. The tools work fine, but AI reasoning is unavailable.');
           console.log('   Try using "test-search" or "test-page" commands to test tools directly.');
         }
       }
@@ -273,7 +273,7 @@ async function interactiveTest() {
   console.log('👋 Exiting interactive test.');
   console.log('\n📝 Summary:');
   console.log('• LangChain agent provides detailed execution logs');
-  console.log('• Tools work independently of OpenAI quota issues');
+  console.log('• Tools work independently of Groq quota issues');
   console.log('• Agent can maintain conversation context');
   console.log('• Professional-grade AI agent architecture');
 }

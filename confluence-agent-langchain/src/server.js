@@ -14,7 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 // Validate required environment variables
-const requiredEnvVars = ['CONFLUENCE_BASE_URL', 'ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN', 'OPENAI_API_KEY'];
+const requiredEnvVars = ['CONFLUENCE_BASE_URL', 'ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN', 'GROQ_API_KEY'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingVars.length > 0) {
@@ -25,7 +25,7 @@ if (missingVars.length > 0) {
 
 // Initialize the agent
 const agent = new ConfluenceAgent(
-  process.env.OPENAI_API_KEY,
+  process.env.GROQ_API_KEY,
   process.env.CONFLUENCE_BASE_URL,
   process.env.ATLASSIAN_EMAIL,
   process.env.ATLASSIAN_API_TOKEN
@@ -55,8 +55,8 @@ app.get('/health', (req, res) => {
       baseUrl: process.env.CONFLUENCE_BASE_URL,
       configured: true,
     },
-    openai: {
-      configured: !!process.env.OPENAI_API_KEY,
+    groq: {
+      configured: !!process.env.GROQ_API_KEY,
     },
   });
 });
@@ -249,7 +249,7 @@ app.listen(PORT, () => {
   console.log(`🔧 Tools endpoint: http://localhost:${PORT}/agent/tools`);
   console.log(`❤️  Health check: http://localhost:${PORT}/health`);
   console.log(`🔍 Confluence Base URL: ${process.env.CONFLUENCE_BASE_URL}`);
-  console.log(`🤖 OpenAI configured: ${!!process.env.OPENAI_API_KEY}`);
+  console.log(`🤖 Groq configured: ${!!process.env.GROQ_API_KEY}`);
 });
 
 export default app;

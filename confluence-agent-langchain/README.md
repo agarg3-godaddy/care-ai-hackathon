@@ -1,6 +1,6 @@
-# Confluence AI Agent (LangChain Version)
+# Confluence AI Agent (LangChain + Groq Version)
 
-A powerful AI agent for Confluence queries built with **LangChain.js** - the industry-standard framework for building AI applications.
+A powerful AI agent for Confluence queries built with **LangChain.js** and powered by **Groq** - the industry-standard framework for building AI applications with fast, cost-effective inference.
 
 ## 🚀 Why LangChain.js?
 
@@ -25,7 +25,7 @@ A powerful AI agent for Confluence queries built with **LangChain.js** - the ind
                                 │                        │
                                 ▼                        ▼
                        ┌──────────────────┐    ┌─────────────────┐
-                       │  Confluence      │    │  OpenAI GPT-4   │
+                       │  Confluence      │    │  Groq LLM       │
                        │  Tools           │    │  (Reasoning)    │
                        └──────────────────┘    └─────────────────┘
                                 │
@@ -39,7 +39,7 @@ A powerful AI agent for Confluence queries built with **LangChain.js** - the ind
 
 - **LangChain.js** - AI agent framework
 - **Express.js** - Web server
-- **OpenAI GPT-4** - Language model
+- **Groq LLM** - Fast, cost-effective language model
 - **Confluence REST API** - Content management
 - **Node.js** - Runtime environment
 

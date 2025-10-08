@@ -1,21 +1,21 @@
-import { ChatOpenAI } from '@langchain/openai';
+import { ChatGroq } from '@langchain/groq';
 import { AgentExecutor, createOpenAIFunctionsAgent } from 'langchain/agents';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { ConfluenceSearchTool, ConfluencePageTool } from './tools.js';
 
 export class ConfluenceAgent {
-  constructor(openaiApiKey, confluenceBaseUrl, confluenceEmail, confluenceApiToken) {
+  constructor(groqApiKey, confluenceBaseUrl, confluenceEmail, confluenceApiToken) {
 
-    console.log('openaiApiKey: ', openaiApiKey)
+    console.log('groqApiKey: ', groqApiKey)
     console.log('confluenceBaseUrl: ', confluenceBaseUrl)
     console.log('confluenceEmail: ', confluenceEmail)
     console.log('confluenceApiToken: ', confluenceApiToken)
 
     // Initialize the LLM
-    this.llm = new ChatOpenAI({
-      model: 'gpt-4o',
+    this.llm = new ChatGroq({
+      model: 'llama-3.1-8b-instant',
       temperature: 0.3,
-      openAIApiKey: openaiApiKey,
+      groqApiKey: groqApiKey,
     });
 
     // Initialize tools

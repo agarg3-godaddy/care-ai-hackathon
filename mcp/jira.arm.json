@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "jira": {
+      "command": "node",
+      "args": ["mcp/mcp-jira.js"],
+      "env": {
+        "ATLASSIAN_BASE_URL": "https://godaddy-corp.atlassian.net",
+        "ATLASSIAN_EMAIL": "<email>",
+        "ATLASSIAN_API_TOKEN": "<token>"
+      }
+    }
+  }
+}
+
+
